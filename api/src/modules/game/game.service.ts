@@ -11,55 +11,56 @@ export class GameService {
   ) {}
 
   async executeQuery(userId: string, missionId: number, userQuery: string) {
-    // 1. Sanitização básica (Implemente uma mais robusta depois)
-    if (
-      /drop|alter|truncate|grant|revoke|insert|update|delete/i.test(userQuery)
-    ) {
-      // Por enquanto, bloqueamos escrita para teste inicial
-      // Depois liberaremos INSERT/DELETE conforme sua regra de negócio
-      // throw new BadRequestException('Apenas consultas (SELECT) são permitidas nesta fase.');
-    }
-
     const schemaName = `play_${userId.replace(/-/g, '_')}`;
 
-    // --- BLOCO ADMIN (Prepara o Terreno) ---
+    // --- BLOCO ADMIN ---
     const queryRunnerAdmin = this.adminDS.createQueryRunner();
     await queryRunnerAdmin.connect();
 
+    let mission: Mission | null;
+
     try {
-      // Busca a missão
-      const mission = await queryRunnerAdmin.manager.findOne(Mission, {
+      // 1. Busca a missão ANTES de mudar o search_path
+      mission = await queryRunnerAdmin.manager.findOne(Mission, {
         where: { id: missionId },
       });
       if (!mission) throw new BadRequestException('Missão não encontrada');
 
-      // Cria o Sandbox (Chama a função do Banco)
+      // 2. Prepara o Sandbox
       await queryRunnerAdmin.query(`SELECT setup_user_sandbox($1)`, [userId]);
 
-      // Popula o Sandbox com os dados do crime
-      // Importante: setar o search_path para o schema criado
-      await queryRunnerAdmin.query(`SET search_path TO ${schemaName}`);
+      // 3. Muda o path do Admin para incluir o sandbox E o public (para ele não se perder)
+      await queryRunnerAdmin.query(`SET search_path TO ${schemaName}, public`);
+
+      // 4. Popula o Sandbox
       await queryRunnerAdmin.query(mission.sqlSetup);
+
+      // 5. RESET: Volta o Admin para o padrão antes de liberar a conexão
+      await queryRunnerAdmin.query(`SET search_path TO DEFAULT`);
+    } catch (err) {
+      await queryRunnerAdmin.query(`SET search_path TO DEFAULT`);
+      throw err;
     } finally {
       await queryRunnerAdmin.release();
     }
 
-    // --- BLOCO PLAYER (Executa a Investigação) ---
+    // --- BLOCO PLAYER ---
     const queryRunnerPlayer = this.playerDS.createQueryRunner();
     await queryRunnerPlayer.connect();
 
     try {
-      // Player entra no sandbox
+      // 1. O Jogador entra APENAS no sandbox (Segurança Máxima)
       await queryRunnerPlayer.query(`SET search_path TO ${schemaName}`);
 
-      // Executa a query do usuário
+      // 2. Executa a query
       const result: unknown = await queryRunnerPlayer.query(userQuery);
 
-      return {
-        success: true,
-        data: result,
-      };
+      // 3. RESET: Limpa a conexão do player
+      await queryRunnerPlayer.query(`SET search_path TO DEFAULT`);
+
+      return { success: true, data: result };
     } catch (error) {
+      await queryRunnerPlayer.query(`SET search_path TO DEFAULT`);
       const message = error instanceof Error ? error.message : String(error);
       throw new BadRequestException(`Erro SQL: ${message}`);
     } finally {
