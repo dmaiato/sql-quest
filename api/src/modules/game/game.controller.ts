@@ -4,7 +4,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { CreateSchemaDTO } from './dto/create-schema.dto';
 
 @ApiTags('Game Engine')
-@Controller('game')
+@Controller('games')
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
@@ -12,6 +12,6 @@ export class GameController {
   async run(@Body() body: CreateSchemaDTO) {
     // Simulando um UUID se não vier no body (para testes rápidos)
     const uid = body.userId || '123e4567-e89b-12d3-a456-426614174000';
-    return this.gameService.executeQuery(uid, body.missionId, body.query);
+    return this.gameService.submitAttempt(uid, body.missionId, body.query);
   }
 }

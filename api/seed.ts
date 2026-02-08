@@ -1,6 +1,6 @@
 // seed.ts
 import { DataSource } from 'typeorm';
-import { Mission } from './src/modules/mission/mission.entity';
+import { Mission } from './src/modules/mission/entity/mission.entity';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

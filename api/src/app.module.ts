@@ -3,9 +3,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Mission } from './modules/mission/mission.entity';
+import { Mission } from './modules/mission/entity/mission.entity';
 import { GameModule } from './modules/game/game.module';
 import { DatabaseModule } from './modules/database/database.module';
+import { FingerprintValidator } from './modules/game/strategies/fingerprint-validator';
+import { MissionRepository } from './modules/mission/repository/mission.repository';
+import { MissionModule } from './modules/mission/mission.module';
 
 @Module({
   imports: [
@@ -45,8 +48,10 @@ import { DatabaseModule } from './modules/database/database.module';
     GameModule,
 
     DatabaseModule,
+
+    MissionModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, FingerprintValidator, MissionRepository],
 })
 export class AppModule {}

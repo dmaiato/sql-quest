@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MissionValidator } from './mission-validator';
+import { MissionRepository } from './mission.repository';
 
-describe('MissionValidator', () => {
-  let provider: MissionValidator;
+describe('MissionRepository', () => {
+  let provider: MissionRepository;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MissionValidator],
+      providers: [MissionRepository],
     }).compile();
 
-    provider = module.get<MissionValidator>(MissionValidator);
+    provider = module.get<MissionRepository>(MissionRepository);
   });
 
   it('should be defined', () => {
