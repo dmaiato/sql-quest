@@ -19,18 +19,6 @@ export class InitialSecurity1700000000000 implements MigrationInterface {
 
     // 2. Segurança: Criar Roles e Funcões
     await queryRunner.query(`
-            -- Criar Role Restrita (se não existir)
-            DO $$ 
-            BEGIN
-              IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'player_restricted') THEN
-                CREATE ROLE player_restricted WITH LOGIN PASSWORD 'senha_jogador_123';
-              END IF;
-            END $$;
-
-            -- Bloquear Public
-            REVOKE ALL ON SCHEMA public FROM PUBLIC;
-            ALTER ROLE player_restricted SET statement_timeout = '5000'; -- 5s timeout
-
             -- Função de Sandbox
             CREATE OR REPLACE FUNCTION setup_user_sandbox(target_user_id TEXT) 
             RETURNS VOID AS $$
@@ -59,8 +47,8 @@ export class InitialSecurity1700000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "missions"`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS setup_user_sandbox`);
+    // await queryRunner.query(`DROP TABLE "missions"`);
+    // await queryRunner.query(`DROP FUNCTION IF EXISTS setup_user_sandbox`);
     // Não removemos roles em rollback por segurança
   }
 }

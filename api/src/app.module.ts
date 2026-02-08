@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Mission } from './modules/mission/mission.entity';
 import { GameModule } from './modules/game/game.module';
+import { DatabaseModule } from './modules/database/database.module';
 
 @Module({
   imports: [
@@ -25,20 +26,25 @@ import { GameModule } from './modules/game/game.module';
     }),
 
     // 2. Conexão PLAYER (Restrita)
-    TypeOrmModule.forRootAsync({
-      name: 'player_connection', // Nome para injeção posterior
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get('DATABASE_PLAYER_URL'),
-        entities: [], // O player não vê as tabelas do sistema
-        synchronize: false,
-        logging: false,
-      }),
-    }),
+    // TypeOrmModule.forRootAsync({
+    //   name: 'player_connection', // Nome para injeção posterior
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   useFactory: (config: ConfigService) => ({
+    //     type: 'postgres',
+    //     url: config.get('DATABASE_PLAYER_URL'),
+    //     retryAttempts: 5, // Tenta 5 vezes antes de desistir
+    //     retryDelay: 3000, // Espera 3s entre as tentativas
+    //     keepConnectionAlive: true,
+    //     entities: [], // O player não vê as tabelas do sistema
+    //     synchronize: false,
+    //     logging: false,
+    //   }),
+    // }),
 
     GameModule,
+
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
