@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Mission } from './modules/mission/entity/mission.entity';
@@ -51,7 +49,7 @@ import { MissionModule } from './modules/mission/mission.module';
 
     MissionModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, FingerprintValidator, MissionRepository],
+  controllers: [],
+  providers: [FingerprintValidator, MissionRepository],
 })
 export class AppModule {}
