@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
@@ -6,7 +7,10 @@ import { DataSource } from 'typeorm';
 export class DatabaseSetupService implements OnModuleInit {
   private readonly logger = new Logger(DatabaseSetupService.name);
 
-  constructor(@InjectDataSource('default') private adminDS: DataSource) {}
+  constructor(
+    @InjectDataSource('default') private adminDS: DataSource,
+    private readonly config: ConfigService,
+  ) {}
 
   async onModuleInit() {
     this.logger.log('Iniciando verificação de integridade de segurança...');
@@ -14,32 +18,82 @@ export class DatabaseSetupService implements OnModuleInit {
   }
 
   private async ensurePlayerRole() {
-    const playerPass = 'senha_jogador_123'; // No futuro, use process.env.PLAYER_PASS
+    const playerRole = this.config.get<string>('DB_USER_PLAYER');
+    const playerPass = this.config.get<string>('DB_PASS_PLAYER');
+    const dbName = this.config.get<string>('DB_NAME');
+    const timeout = this.config.get<string>('QUERY_TIMEOUT');
+
+    if (!playerRole || !playerPass || !dbName) {
+      this.logger.error('❌ Configuração de banco de dados incompleta.');
+      return;
+    }
+
+    const safeRoleIdentifier = this.quoteId(playerRole);
+    const safeRoleLiteral = this.quoteLit(playerRole);
+    const safePassLiteral = this.quoteLit(playerPass);
+    const safeDbIdentifier = this.quoteId(dbName);
+    const safeTimeout = parseInt(timeout || '5000', 10);
 
     try {
+      // 1. Create or Update Role
       await this.adminDS.query(`
-        DO $$ 
+        DO
+        $do$
         BEGIN
-          -- 1. Garante que o usuário existe
-          IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'player_restricted') THEN
-            CREATE ROLE player_restricted WITH LOGIN PASSWORD '${playerPass}';
+          IF NOT EXISTS (
+              SELECT FROM pg_catalog.pg_roles WHERE rolname = ${safeRoleLiteral}) THEN
+              CREATE ROLE ${safeRoleIdentifier} WITH LOGIN PASSWORD ${safePassLiteral};
           ELSE
-            -- 2. "AUTO-CURA": Garante que a senha seja sempre a que está no código/env
-            ALTER ROLE player_restricted WITH PASSWORD '${playerPass}';
+              ALTER ROLE ${safeRoleIdentifier} WITH PASSWORD ${safePassLiteral};
           END IF;
-
-          -- 3. Configurações de segurança que podem ter sido perdidas num restart
-          ALTER ROLE player_restricted SET statement_timeout = '5000';
-          REVOKE ALL ON SCHEMA public FROM player_restricted;
-          EXECUTE format('GRANT CONNECT ON DATABASE %I TO player_restricted', current_database());
-        END $$;
+        END
+        $do$;
       `);
-      this.logger.log('✅ Usuário player_restricted sincronizado e ativo.');
+
+      // 2. Set Timeout
+      await this.adminDS.query(
+        `ALTER ROLE ${safeRoleIdentifier} SET statement_timeout = '${safeTimeout}ms'`,
+      );
+
+      // 3. Reset Privileges
+      await this.adminDS.query(
+        `REVOKE ALL PRIVILEGES ON DATABASE ${safeDbIdentifier} FROM ${safeRoleIdentifier}`,
+      );
+      await this.adminDS.query(
+        `REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${safeRoleIdentifier}`,
+      );
+
+      // 4. Grant Connection
+      await this.adminDS.query(
+        `GRANT CONNECT ON DATABASE ${safeDbIdentifier} TO ${safeRoleIdentifier}`,
+      );
+
+      // 5. Set Default Privileges (Read Only)
+      await this.adminDS.query(
+        `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ${safeRoleIdentifier}`,
+      );
+      await this.adminDS.query(
+        `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM ${safeRoleIdentifier}`,
+      );
+
+      this.logger.log(
+        `✅ Usuário: ${safeRoleIdentifier} sincronizado e ativo.`,
+      );
     } catch (error) {
       this.logger.error(
         '❌ Erro ao sincronizar usuário restrito:',
         error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  // Helper to escape SQL identifiers (e.g. table/role names) -> "name"
+  private quoteId(s: string): string {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+
+  // Helper to escape SQL string literals -> 'value'
+  private quoteLit(s: string): string {
+    return `'${s.replace(/'/g, "''")}'`;
   }
 }

@@ -20,7 +20,14 @@ export class ExecutionService {
       await runner.query(`SET search_path TO ${schema}`);
 
       // Execução em paralelo (opcional) ou sequencial
-      const userData = (await runner.query(userSql)) as Record<
+      const safeUserSql = userSql.trim().replace(/;+$/, '');
+
+      // Se a query original for inválida, o erro do Postgres será retornado normalmente.
+      // O LIMIT 500 impede que o Node.js estoure a memória (Heap OOM).
+      const wrappedUserQuery = `SELECT * FROM (${safeUserSql}) AS user_view LIMIT 500`;
+
+      // Executa
+      const userData = (await runner.query(wrappedUserQuery)) as Record<
         string,
         unknown
       >[];

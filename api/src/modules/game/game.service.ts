@@ -3,6 +3,7 @@ import { MissionRepository } from '../mission/repository/mission.repository';
 import { ExecutionService } from './services/execution/execution.service';
 import { SandboxService } from './services/sandbox/sandbox.service';
 import { FingerprintValidator } from './strategies/fingerprint-validator';
+import { SqlSecurityService } from './services/sql-security/sql-security.service';
 
 @Injectable()
 export class GameService {
@@ -11,9 +12,12 @@ export class GameService {
     private readonly sandbox: SandboxService,
     private readonly execution: ExecutionService,
     private readonly validator: FingerprintValidator,
+    private readonly security: SqlSecurityService,
   ) {}
 
   async submitAttempt(userId: string, missionId: number, userQuery: string) {
+    this.security.validateQuery(userQuery);
+
     // 1. Busca os requisitos da missão
     const mission = await this.missionRepo.findById(missionId);
     if (!mission) throw new BadRequestException('Missão não encontrada.');

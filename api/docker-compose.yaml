@@ -6,9 +6,9 @@ services:
     container_name: sql_quest_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: master_password_123
-      POSTGRES_DB: sql_quest
+      POSTGRES_USER: ${DB_USER_ADMIN}
+      POSTGRES_PASSWORD: ${DB_PASS_ADMIN}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - '5435:5432'
     volumes:

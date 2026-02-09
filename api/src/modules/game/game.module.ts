@@ -6,6 +6,7 @@ import { FingerprintValidator } from './strategies/fingerprint-validator';
 import { SandboxService } from './services/sandbox/sandbox.service';
 import { ExecutionService } from './services/execution/execution.service';
 import { MissionModule } from '../mission/mission.module';
+import { SqlSecurityService } from './services/sql-security/sql-security.service';
 
 @Module({
   imports: [DatabaseModule, MissionModule],
@@ -14,6 +15,7 @@ import { MissionModule } from '../mission/mission.module';
     FingerprintValidator,
     SandboxService,
     ExecutionService,
+    SqlSecurityService,
   ],
   controllers: [GameController],
 })
