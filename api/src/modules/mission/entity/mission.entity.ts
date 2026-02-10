@@ -25,9 +25,6 @@ export class Mission {
   @Column({ name: 'sql_validation', type: 'text' })
   sqlValidation: string;
 
-  @Column({ name: 'expected_result', type: 'jsonb' })
-  expectedResult: any;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

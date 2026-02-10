@@ -11,7 +11,6 @@ export class InitialSecurity1700000000000 implements MigrationInterface {
                 "difficulty" character varying(20) NOT NULL,
                 "sql_setup" text NOT NULL,
                 "sql_validation" text NOT NULL,
-                "expected_result" jsonb NOT NULL,
                 "created_at" TIMESTAMP DEFAULT now(),
                 CONSTRAINT "PK_missions" PRIMARY KEY ("id")
             )
