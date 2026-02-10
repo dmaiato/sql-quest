@@ -47,4 +47,33 @@ export class GameService {
       await this.sandbox.cleanup(userId);
     }
   }
+
+  async getMissionContext(missionId: number) {
+    // 1. Busca a missão
+    const mission = await this.missionRepo.findById(missionId);
+    if (!mission) throw new BadRequestException('Missão não encontrada.');
+
+    // Usamos um ID temporário apenas para leitura (não é o ID real do usuário)
+    const tempId = `viewer_${Date.now()}`;
+
+    try {
+      // 2. Cria o palco temporariamente
+      const schema = await this.sandbox.prepareEnvironment(
+        tempId,
+        mission.sqlSetup,
+      );
+
+      // 3. Espiona o palco (Admin olha o que foi criado)
+      const tablesData = await this.sandbox.inspectSchema(schema);
+
+      return {
+        title: mission.title,
+        briefing: mission.briefing,
+        database: tablesData, // Aqui vai a estrutura completa para o Frontend
+      };
+    } finally {
+      // 4. Destrói tudo imediatamente. Segurança máxima.
+      await this.sandbox.cleanup(tempId);
+    }
+  }
 }

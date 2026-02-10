@@ -1,16 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
-export class CreateSchemaDTO {
-  @ApiProperty({ description: 'User id', example: 'user-test-01' })
-  @IsString()
-  userId: string;
-  @ApiProperty({ description: 'Mission id', example: '1' })
-  @IsNumber()
-  missionId: number;
+export class queryDTO {
   @ApiProperty({
     description: 'Query to be executed',
-    example: 'SELECT * FROM agents',
+    example: 'SELECT * FROM <table_name>',
   })
   @IsString()
   query: string;

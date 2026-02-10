@@ -33,4 +33,56 @@ export class SandboxService {
       await queryRunner.release();
     }
   }
+
+  async inspectSchema(schemaName: string) {
+    const queryRunner = this.adminDS.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      // 1. Descobrir as tabelas criadas no schema
+      const tablesInfo = (await queryRunner.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = '${schemaName}' 
+          AND table_type = 'BASE TABLE';
+      `)) as Array<{ table_name: string }>;
+
+      const catalog: Array<{
+        tableName: string;
+        columns: Array<{ name: string; type: string }>;
+        rows: Array<Record<string, unknown>>;
+      }> = [];
+
+      // 2. Para cada tabela, buscar colunas e dados de exemplo
+      for (const t of tablesInfo) {
+        const tableName = t.table_name;
+
+        // Pega as colunas
+        const columns = (await queryRunner.query(`
+          SELECT column_name, data_type 
+          FROM information_schema.columns 
+          WHERE table_schema = '${schemaName}' AND table_name = '${tableName}'
+          ORDER BY ordinal_position;
+        `)) as Array<{ column_name: string; data_type: string }>;
+
+        // Pega os dados (Limitado a 10 linhas para não pesar a requisição)
+        const rows = (await queryRunner.query(`
+          SELECT * FROM "${schemaName}"."${tableName}" LIMIT 10;
+        `)) as Array<Record<string, unknown>>;
+
+        catalog.push({
+          tableName,
+          columns: columns.map((c) => ({
+            name: c.column_name,
+            type: c.data_type,
+          })),
+          rows,
+        });
+      }
+
+      return catalog;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
