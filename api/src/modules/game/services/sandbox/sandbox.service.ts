@@ -50,7 +50,7 @@ export class SandboxService {
       const catalog: Array<{
         tableName: string;
         columns: Array<{ name: string; type: string }>;
-        rows: Array<Record<string, unknown>>;
+        // rows: Array<Record<string, unknown>>;
       }> = [];
 
       // 2. Para cada tabela, buscar colunas e dados de exemplo
@@ -66,9 +66,9 @@ export class SandboxService {
         `)) as Array<{ column_name: string; data_type: string }>;
 
         // Pega os dados (Limitado a 10 linhas para não pesar a requisição)
-        const rows = (await queryRunner.query(`
-          SELECT * FROM "${schemaName}"."${tableName}" LIMIT 10;
-        `)) as Array<Record<string, unknown>>;
+        // const rows = (await queryRunner.query(`
+        //   SELECT * FROM "${schemaName}"."${tableName}" LIMIT 10;
+        // `)) as Array<Record<string, unknown>>;
 
         catalog.push({
           tableName,
@@ -76,7 +76,7 @@ export class SandboxService {
             name: c.column_name,
             type: c.data_type,
           })),
-          rows,
+          // rows,
         });
       }
 
