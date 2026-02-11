@@ -10,6 +10,8 @@ import { MissionModule } from './modules/mission/mission.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { User } from './modules/users/entity/user.entity';
+import { MissionProgress } from './modules/users/entity/mission-progress.entity';
 
 @Module({
   imports: [
@@ -34,7 +36,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get('DATABASE_ADMIN_URL'),
-        // entities: [Mission], // Adicione suas entidades aqui
+        entities: [Mission, User, MissionProgress], // Adicione suas entidades aqui
         autoLoadEntities: true,
         synchronize: false, // Sempre false em produção/projetos sérios
         logging: ['error'],

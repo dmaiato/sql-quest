@@ -28,12 +28,12 @@ export class GameController {
     return this.gameService.getMissionContext(id);
   }
 
-  @Post(':id/test')
+  @Post('missions/:id/previews')
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // Limite mais restrito para preview
   async test(
     @Param('id') missionId: number,
-    @Body('query') data: QueryDTO,
+    @Body() data: QueryDTO,
     @Headers('x-guest-id') guestId?: string,
     @CurrentUser() user?: { id: string },
   ) {
@@ -45,14 +45,14 @@ export class GameController {
     );
   }
 
-  @Post(':id/submit')
+  @Post('missions/:id/submissions')
   @UseGuards(OptionalJwtAuthGuard) // 2. Tenta identificar usuário, mas não bloqueia
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // Configuração base (Auth) sobrescrita pelo Guard
   async submit(
     @Param('id') missionId: number,
-    @Body('query') data: QueryDTO,
-    @Headers('x-guest-id') guestId: string | undefined,
-    @CurrentUser() user: { id: string } | undefined,
+    @Body() data: QueryDTO,
+    @Headers('x-guest-id') guestId?: string,
+    @CurrentUser() user?: { id: string },
   ) {
     // Lógica de Identificação
     const isAuthenticated = !!user;
