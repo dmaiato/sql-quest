@@ -14,7 +14,7 @@ export class GameController {
     return this.gameService.getMissionContext(id);
   }
 
-  @Post('users/:userId/missions/:missionId/preview')
+  @Post('users/:userId/missions/:missionId/previews')
   async test(
     @Param('userId') userId: string,
     @Param('missionId') missionId: number,
@@ -24,7 +24,7 @@ export class GameController {
     return this.gameService.testQuery(userId, missionId, data.query);
   }
 
-  @Post('users/:userId/missions/:missionId/submit')
+  @Post('users/:userId/missions/:missionId/submissions')
   async submit(
     @Param('userId') userId: string,
     @Param('missionId') missionId: number,
