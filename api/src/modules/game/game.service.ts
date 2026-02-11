@@ -15,36 +15,57 @@ export class GameService {
     private readonly security: SqlSecurityService,
   ) {}
 
-  async submitAttempt(userId: string, missionId: number, userQuery: string) {
+  async testQuery(userId: string, missionId: number, userQuery: string) {
     this.security.validateQuery(userQuery);
-
-    // 1. Busca os requisitos da missão
     const mission = await this.missionRepo.findById(missionId);
     if (!mission) throw new BadRequestException('Missão não encontrada.');
 
+    // Criamos um sufixo único para evitar colisões entre Teste e Submit simultâneos
+    const executionId = `${userId}_test_${Date.now()}`;
+    let schemaName: string | undefined;
+
     try {
-      // 2. Prepara
-      const schema = await this.sandbox.prepareEnvironment(
-        userId,
+      schemaName = await this.sandbox.prepareEnvironment(
+        executionId,
         mission.sqlSetup,
       );
 
-      // 3. Executa
+      const data = await this.execution.executePreview(schemaName, userQuery);
+
+      return { success: true, mode: 'test', data };
+    } finally {
+      if (schemaName) {
+        await this.sandbox.cleanup(executionId);
+      }
+    }
+  }
+
+  async submitAttempt(userId: string, missionId: number, userQuery: string) {
+    this.security.validateQuery(userQuery);
+    const mission = await this.missionRepo.findById(missionId);
+    if (!mission) throw new BadRequestException('Missão não encontrada.');
+
+    const executionId = `${userId}_sub_${Date.now()}`;
+    let schemaName: string | undefined;
+
+    try {
+      schemaName = await this.sandbox.prepareEnvironment(
+        executionId,
+        mission.sqlSetup,
+      );
+
       const { userData, expectedData } = await this.execution.executeChallenge(
-        schema,
+        schemaName,
         userQuery,
         mission.sqlValidation,
       );
 
-      // 4. Valida e retorna o resultado
       const result = this.validator.validate(userData, expectedData);
-      return {
-        ...result,
-        data: userData,
-      };
+      return { ...result, mode: 'submission', data: userData };
     } finally {
-      // 5. Destrói o ambiente após o uso
-      await this.sandbox.cleanup(userId);
+      if (schemaName) {
+        await this.sandbox.cleanup(executionId);
+      }
     }
   }
 
