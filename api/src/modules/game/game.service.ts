@@ -4,6 +4,7 @@ import { ExecutionService } from './services/execution/execution.service';
 import { SandboxService } from './services/sandbox/sandbox.service';
 import { FingerprintValidator } from './strategies/fingerprint-validator';
 import { SqlSecurityService } from './services/sql-security/sql-security.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class GameService {
@@ -13,6 +14,7 @@ export class GameService {
     private readonly execution: ExecutionService,
     private readonly validator: FingerprintValidator,
     private readonly security: SqlSecurityService,
+    private readonly usersService: UsersService,
   ) {}
 
   async testQuery(userId: string, missionId: number, userQuery: string) {
@@ -40,15 +42,26 @@ export class GameService {
     }
   }
 
-  async submitAttempt(userId: string, missionId: number, userQuery: string) {
+  async submitAttempt(
+    identifier: string,
+    missionId: number,
+    userQuery: string,
+    isGuest: boolean,
+  ) {
+    // 1. Validação de Segurança (Regex)
     this.security.validateQuery(userQuery);
+
     const mission = await this.missionRepo.findById(missionId);
     if (!mission) throw new BadRequestException('Missão não encontrada.');
 
-    const executionId = `${userId}_sub_${Date.now()}`;
+    // ID do sandbox depende se é guest ou user para evitar colisões
+    const executionId = isGuest
+      ? `guest_${identifier}_${Date.now()}`
+      : `user_${identifier}_${Date.now()}`;
     let schemaName: string | undefined;
 
     try {
+      // 2. Prepara e Executa Sandbox (Igual para ambos)
       schemaName = await this.sandbox.prepareEnvironment(
         executionId,
         mission.sqlSetup,
@@ -60,12 +73,24 @@ export class GameService {
         mission.sqlValidation,
       );
 
+      // 3. Valida Resultado
       const result = this.validator.validate(userData, expectedData);
-      return { ...result, mode: 'submission', data: userData };
-    } finally {
-      if (schemaName) {
-        await this.sandbox.cleanup(executionId);
+
+      // 4. PERSISTÊNCIA CONDICIONAL
+      // Só salvamos no banco se o usuário for REAL e tiver ACERTADO a missão
+      if (!isGuest && result.success) {
+        const xpReward = 100; // Poderia vir de mission.xpReward
+        await this.usersService.saveProgress(identifier, missionId, xpReward);
       }
+
+      return {
+        ...result,
+        mode: isGuest ? 'guest_submission' : 'auth_submission',
+        data: userData,
+        saved: !isGuest && result.success, // Flag para o front saber se foi persistido
+      };
+    } finally {
+      if (schemaName) await this.sandbox.cleanup(executionId);
     }
   }
 

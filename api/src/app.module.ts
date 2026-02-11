@@ -7,10 +7,24 @@ import { DatabaseModule } from './modules/database/database.module';
 import { FingerprintValidator } from './modules/game/strategies/fingerprint-validator';
 import { MissionRepository } from './modules/mission/repository/mission.repository';
 import { MissionModule } from './modules/mission/mission.module';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: () => [
+        {
+          ttl: 60000, // Janela de 1 minuto
+          limit: 10, // Limite padrão (sobrescrito pelos guards)
+        },
+      ],
+    }),
 
     // 1. Conexão ADMIN (Default)
     TypeOrmModule.forRootAsync({
@@ -20,7 +34,8 @@ import { MissionModule } from './modules/mission/mission.module';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get('DATABASE_ADMIN_URL'),
-        entities: [Mission], // Adicione suas entidades aqui
+        // entities: [Mission], // Adicione suas entidades aqui
+        autoLoadEntities: true,
         synchronize: false, // Sempre false em produção/projetos sérios
         logging: ['error'],
       }),
@@ -48,6 +63,10 @@ import { MissionModule } from './modules/mission/mission.module';
     DatabaseModule,
 
     MissionModule,
+
+    UsersModule,
+
+    AuthModule,
   ],
   controllers: [],
   providers: [FingerprintValidator, MissionRepository],

@@ -1,10 +1,24 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  UseGuards,
+  Headers,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { GameService } from './game.service';
 import { ApiTags } from '@nestjs/swagger';
-import { queryDTO } from './dto/queryDTO';
+import { QueryDTO } from './dto/queryDTO';
+import { SmartThrottlerGuard } from 'src/common/guards/smart-throttler/smart-throttler.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { Throttle } from '@nestjs/throttler';
+import { CurrentUser } from 'src/common/decorators/current-user/current-user.decorator';
 
 @ApiTags('Game Engine')
 @Controller('games')
+@UseGuards(SmartThrottlerGuard)
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
@@ -14,23 +28,47 @@ export class GameController {
     return this.gameService.getMissionContext(id);
   }
 
-  @Post('users/:userId/missions/:missionId/previews')
+  @Post(':id/test')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // Limite mais restrito para preview
   async test(
-    @Param('userId') userId: string,
-    @Param('missionId') missionId: number,
-    @Body() data: queryDTO,
+    @Param('id') missionId: number,
+    @Body('query') data: QueryDTO,
+    @Headers('x-guest-id') guestId?: string,
+    @CurrentUser() user?: { id: string },
   ) {
-    // Mock de user ID
-    return this.gameService.testQuery(userId, missionId, data.query);
+    const identifier = user?.id || guestId || 'anonymous';
+    return this.gameService.testQuery(
+      identifier,
+      Number(missionId),
+      data.query,
+    );
   }
 
-  @Post('users/:userId/missions/:missionId/submissions')
+  @Post(':id/submit')
+  @UseGuards(OptionalJwtAuthGuard) // 2. Tenta identificar usuário, mas não bloqueia
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // Configuração base (Auth) sobrescrita pelo Guard
   async submit(
-    @Param('userId') userId: string,
-    @Param('missionId') missionId: number,
-    @Body() data: queryDTO,
+    @Param('id') missionId: number,
+    @Body('query') data: QueryDTO,
+    @Headers('x-guest-id') guestId: string | undefined,
+    @CurrentUser() user: { id: string } | undefined,
   ) {
-    // userId viria do token JWT na vida real
-    return this.gameService.submitAttempt(userId, missionId, data.query);
+    // Lógica de Identificação
+    const isAuthenticated = !!user;
+    const identifier = isAuthenticated ? user?.id : guestId;
+
+    if (!identifier) {
+      throw new UnauthorizedException(
+        'Identificação obrigatória: Faça login ou envie x-guest-id.',
+      );
+    }
+
+    return this.gameService.submitAttempt(
+      identifier,
+      Number(missionId),
+      data.query,
+      !isAuthenticated,
+    );
   }
 }

@@ -7,9 +7,10 @@ import { SandboxService } from './services/sandbox/sandbox.service';
 import { ExecutionService } from './services/execution/execution.service';
 import { MissionModule } from '../mission/mission.module';
 import { SqlSecurityService } from './services/sql-security/sql-security.service';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [DatabaseModule, MissionModule],
+  imports: [DatabaseModule, MissionModule, UsersModule],
   providers: [
     GameService,
     FingerprintValidator,
