@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { User } from '../users/entity/user.entity';
 import { CurrentUser } from 'src/common/decorators/current-user/current-user.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
@@ -51,6 +52,7 @@ export class AuthController {
    * Endpoint útil para o Frontend validar o token ao carregar a página
    * e recuperar os dados do usuário (como XP e Nickname)
    */
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   getProfile(@CurrentUser() user: { id: string; email: string }) {

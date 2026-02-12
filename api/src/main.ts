@@ -9,6 +9,15 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('SQL-QUEST API')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Enter JWT token',
+      },
+      'access-token', // This is the name/key we use in decorators
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { GameService } from './game.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { QueryDTO } from './dto/queryDTO';
 import { SmartThrottlerGuard } from 'src/common/guards/smart-throttler/smart-throttler.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -17,6 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/common/decorators/current-user/current-user.decorator';
 
 @ApiTags('Game Engine')
+@ApiBearerAuth('access-token')
 @Controller('games')
 @UseGuards(SmartThrottlerGuard)
 export class GameController {
@@ -45,6 +46,7 @@ export class GameController {
     );
   }
 
+  @ApiBearerAuth('access-token')
   @Post('missions/:id/submissions')
   @UseGuards(OptionalJwtAuthGuard) // 2. Tenta identificar usuário, mas não bloqueia
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // Configuração base (Auth) sobrescrita pelo Guard
